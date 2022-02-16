@@ -6,8 +6,8 @@ public final class NetherRatio extends JavaPlugin {
 
     @Override
     public void onEnable() {
-        // Plugin startup logic
-
+        getServer().getPluginManager().registerEvents(new FirePlaceListener(this), this);
+        getServer().getPluginManager().registerEvents(new PlayerPortalCreateListener(this), this);
     }
 
     @Override

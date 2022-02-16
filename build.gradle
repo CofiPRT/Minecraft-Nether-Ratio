@@ -1,9 +1,12 @@
 plugins {
     id 'java'
+    id("xyz.jpenilla.run-paper") version "1.0.6" // Adds runServer and runMojangMappedServer tasks for testing
+//    id("net.minecrell.plugin-yml.bukkit") version "0.5.1" // Generates plugin.yml
 }
 
-group = 'ro.cofi'
-version = '1.1.18'
+group = project.mavenGroup
+version = "${project.minecraftVersion}-${project.modVersion}"
+minecraftVersion = project.minecraftVersion
 
 repositories {
     mavenCentral()
@@ -43,5 +46,14 @@ processResources {
     filteringCharset 'UTF-8'
     filesMatching('plugin.yml') {
         expand props
+    }
+}
+
+tasks {
+    runServer {
+        // Configure the Minecraft version for our task.
+        // This is the only required configuration besides applying the plugin.
+        // Your plugin's jar (or shadowJar if present) will be used automatically.
+        minecraftVersion("1.18.1")
     }
 }
