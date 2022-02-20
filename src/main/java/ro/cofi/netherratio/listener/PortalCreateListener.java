@@ -6,6 +6,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.world.PortalCreateEvent;
 import ro.cofi.netherratio.NetherRatio;
+import ro.cofi.netherratio.event.CustomPortalCreateEvent;
 
 public class PortalCreateListener implements Listener {
 
@@ -17,6 +18,9 @@ public class PortalCreateListener implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onPortalCreate(PortalCreateEvent event) {
+        if (event instanceof CustomPortalCreateEvent)
+            return;
+
         // only intervene in portal pairing
         if (event.getReason() != PortalCreateEvent.CreateReason.NETHER_PAIR)
             return;

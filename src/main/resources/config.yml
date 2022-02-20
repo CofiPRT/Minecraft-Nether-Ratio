@@ -1,13 +1,16 @@
 ratio:
     overworld: 20
     nether: 1
-max_distance:
+min_distance_between_portals:
     overworld: 320
     nether: 16
-size:
+max_portal_placement_offset:
+    vertical: 256
+    horizontal: 16
+portal_size:
     height:
-        min: 3
+        min: 1
         max: 21
     width:
-        min: 2
+        min: 1
         max: 21

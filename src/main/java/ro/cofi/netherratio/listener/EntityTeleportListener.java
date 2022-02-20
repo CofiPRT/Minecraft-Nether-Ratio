@@ -8,8 +8,10 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityTeleportEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
-import ro.cofi.netherratio.misc.Constants;
 import ro.cofi.netherratio.NetherRatio;
+import ro.cofi.netherratio.event.CustomEntityTeleportEvent;
+import ro.cofi.netherratio.event.CustomPlayerTeleportEvent;
+import ro.cofi.netherratio.misc.Constants;
 
 import java.util.Objects;
 
@@ -23,6 +25,9 @@ public class EntityTeleportListener implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onPlayerTeleport(PlayerTeleportEvent event) {
+        if (event instanceof CustomPlayerTeleportEvent)
+            return;
+
         // only intervene in nether portal teleportation
         if (event.getCause() != PlayerTeleportEvent.TeleportCause.NETHER_PORTAL)
             return;
@@ -32,6 +37,9 @@ public class EntityTeleportListener implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onEntityTeleport(EntityTeleportEvent event) {
+        if (event instanceof CustomEntityTeleportEvent)
+            return;
+
         // only intervene in nether portal teleportation
         if (event.getTo() == null)
             return;

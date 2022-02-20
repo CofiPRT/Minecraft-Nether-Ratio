@@ -16,9 +16,7 @@ public interface Constants {
             Material.FIRE
     );
 
-    Set<Material> FRAME_BLOCKS = ImmutableSet.of(
-            Material.CRYING_OBSIDIAN
-    );
+    Material FRAME_BLOCK = Material.CRYING_OBSIDIAN;
 
     Set<World.Environment> VALID_ENVIRONMENTS = EnumSet.of(
             World.Environment.NORMAL,

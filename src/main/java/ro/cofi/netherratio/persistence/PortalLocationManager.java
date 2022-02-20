@@ -1,5 +1,7 @@
 package ro.cofi.netherratio.persistence;
 
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -95,39 +97,28 @@ public class PortalLocationManager {
     }
 
     /**
-     * Save an Overworld portal into the config.
+     * Save a portal into the config.
      */
-    public void saveOverworldPortal(Vector overworldPortalLocation) {
-        getConfig().set(OVERWORLD_KEY + "." + vecToString(overworldPortalLocation), true);
+    public void savePortal(Location location) {
+        getConfig().set(getKey(location) + "." + vecToString(location.toVector()), true);
     }
 
     /**
-     * Save a Nether portal into the config.
+     * Delete a portal from the config.
      */
-    public void saveNetherPortal(Vector netherPortalLocation) {
-        getConfig().set(NETHER_KEY + "." + vecToString(netherPortalLocation), true);
+    public void deletePortal(Location location) {
+        getConfig().set(getKey(location) + "." + vecToString(location.toVector()), null);
     }
 
     /**
-     * Delete an Overworld portal from the config.
+     * Get all portals in the given world.
      */
-    public void deleteOverworldPortal(Vector overworldPortalLocation) {
-        getConfig().set(OVERWORLD_KEY + "." + vecToString(overworldPortalLocation), null);
+    public List<Vector> getPortals(World world) {
+        return getPortals(getKey(world));
     }
 
-    /**
-     * Delete a Nether portal from the config.
-     */
-    public void deleteNetherPortal(Vector netherPortalLocation) {
-        getConfig().set(NETHER_KEY + "." + vecToString(netherPortalLocation), null);
-    }
-
-    public List<Vector> getOverworldPortals() {
-        return getPortals(OVERWORLD_KEY);
-    }
-
-    public List<Vector> getNetherPortals() {
-        return getPortals(NETHER_KEY);
+    public List<Vector> getPortals(World.Environment env) {
+        return getPortals(env == World.Environment.NORMAL ? OVERWORLD_KEY : NETHER_KEY);
     }
 
     private List<Vector> getPortals(String key) {
@@ -157,6 +148,14 @@ public class PortalLocationManager {
         }
 
         return new Vector(coords[0], coords[1], coords[2]);
+    }
+
+    private String getKey(Location location) {
+        return getKey(location.getWorld());
+    }
+
+    private String getKey(World world) {
+        return world.getEnvironment() == World.Environment.NORMAL ? OVERWORLD_KEY : NETHER_KEY;
     }
 
 }

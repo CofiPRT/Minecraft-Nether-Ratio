@@ -14,7 +14,7 @@ import org.bukkit.util.Vector;
 import ro.cofi.netherratio.ConfigKey;
 import ro.cofi.netherratio.NetherRatio;
 import ro.cofi.netherratio.misc.Constants;
-import ro.cofi.netherratio.misc.Util;
+import ro.cofi.netherratio.misc.LocationUtil;
 import ro.cofi.netherratio.misc.VectorAxis;
 
 import java.util.Arrays;
@@ -60,10 +60,7 @@ public class FirePlaceListener implements Listener {
             location.getBlock().setBlockData(blockData);
 
         // save for lookups
-        if (world.getEnvironment() == World.Environment.NORMAL)
-            plugin.getPortalLocationManager().saveOverworldPortal(frameData.getBottomLeft().toVector());
-        else
-            plugin.getPortalLocationManager().saveNetherPortal(frameData.getBottomLeft().toVector());
+        plugin.getPortalLocationManager().savePortal(frameData.getBottomLeft());
     }
 
     private PortalFrameData computePortalBlocks(Block blockPlaced, World world) {
@@ -75,11 +72,11 @@ public class FirePlaceListener implements Listener {
         int maxWidth = plugin.getConfig().getInt(ConfigKey.PORTAL_WIDTH_MAX);
 
         // find vertical limits
-        Location bottom = Util.findFrameLimit(origin, VectorAxis.NY, Constants.REPLACEABLE_BLOCKS, maxHeight);
+        Location bottom = LocationUtil.findFrameLimit(origin, VectorAxis.NY, Constants.REPLACEABLE_BLOCKS, maxHeight);
         if (bottom == null)
             return null;
 
-        Location top = Util.findFrameLimit(origin, VectorAxis.Y, Constants.REPLACEABLE_BLOCKS, maxHeight);
+        Location top = LocationUtil.findFrameLimit(origin, VectorAxis.Y, Constants.REPLACEABLE_BLOCKS, maxHeight);
         if (top == null)
             return null;
 
@@ -92,11 +89,11 @@ public class FirePlaceListener implements Listener {
 
         // attempt on X axis, then Z axis
         for (Vector axis : Arrays.asList(VectorAxis.X, VectorAxis.Z)) {
-            left = Util.findFrameLimit(origin, axis.clone().multiply(-1), Constants.REPLACEABLE_BLOCKS, maxWidth);
+            left = LocationUtil.findFrameLimit(origin, axis.clone().multiply(-1), Constants.REPLACEABLE_BLOCKS, maxWidth);
             if (left == null)
                 continue;
 
-            right = Util.findFrameLimit(origin, axis.clone().multiply(1), Constants.REPLACEABLE_BLOCKS, maxWidth);
+            right = LocationUtil.findFrameLimit(origin, axis.clone().multiply(1), Constants.REPLACEABLE_BLOCKS, maxWidth);
             if (right == null) {
                 left = null; // reset for future iteration
                 continue;
@@ -142,8 +139,8 @@ public class FirePlaceListener implements Listener {
     private boolean checkFrame(Location corner1, Location corner2, Vector frameDirection) {
         World world = corner1.getWorld();
 
-        for (Location location : Util.getLocationsBetween(corner1, corner2))
-            if (!Constants.FRAME_BLOCKS.contains(world.getBlockAt(location.clone().add(frameDirection)).getType()))
+        for (Location location : LocationUtil.getLocationsBetween(corner1, corner2))
+            if (world.getBlockAt(location.clone().add(frameDirection)).getType() != Constants.FRAME_BLOCK)
                 return false;
 
         return true;
@@ -156,7 +153,7 @@ public class FirePlaceListener implements Listener {
         private final Axis horizontalAxis;
 
         public PortalFrameData(Location bottomLeft, Location topRight, Axis horizontalAxis) {
-            this.innerLocations = Util.getLocationsBetween(bottomLeft, topRight);
+            this.innerLocations = LocationUtil.getLocationsBetween(bottomLeft, topRight);
             this.horizontalAxis = horizontalAxis;
             this.bottomLeft = bottomLeft;
         }
