@@ -1,19 +1,17 @@
-package ro.cofi.netherratio;
+package ro.cofi.netherratio.listener;
 
 import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.world.PortalCreateEvent;
-import org.bukkit.util.Vector;
+import ro.cofi.netherratio.NetherRatio;
 
-public class PlayerPortalCreateListener implements Listener {
+public class PortalCreateListener implements Listener {
 
     private final NetherRatio plugin;
 
-    public PlayerPortalCreateListener(NetherRatio plugin) {
+    public PortalCreateListener(NetherRatio plugin) {
         this.plugin = plugin;
     }
 
@@ -28,19 +26,14 @@ public class PlayerPortalCreateListener implements Listener {
             return;
 
         // only intervene if the portal type is custom
-        World world = entity.getWorld();
-        Location checkedLocation = entity.getLocation().toBlockLocation();
-
-        // look down until we find the bottom frame of the portal
-        while (world.getBlockAt(checkedLocation).getType() == Material.NETHER_PORTAL)
-            checkedLocation.subtract(new Vector(0, -1, 0));
-
-        // not the custom material, ignore
-        if (world.getBlockAt(checkedLocation).getType() != Material.CRYING_OBSIDIAN)
+        Location referencePoint = plugin.getPortalLogicManager().getReferencePoint(entity);
+        if (referencePoint == null)
             return;
 
         // here, what we want to do is simply cancel the event, because we want to handle it differently
         event.setCancelled(true);
+
+        plugin.getPortalLogicManager().handleEntityTeleport(entity, referencePoint);
     }
 
 }

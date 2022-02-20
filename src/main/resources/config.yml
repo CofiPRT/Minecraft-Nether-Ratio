@@ -1,0 +1,13 @@
+ratio:
+    overworld: 20
+    nether: 1
+max_distance:
+    overworld: 320
+    nether: 16
+size:
+    height:
+        min: 3
+        max: 21
+    width:
+        min: 2
+        max: 21
