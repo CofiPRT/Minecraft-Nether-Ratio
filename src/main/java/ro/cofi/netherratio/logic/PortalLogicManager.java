@@ -1,4 +1,4 @@
-package ro.cofi.netherratio;
+package ro.cofi.netherratio.logic;
 
 import org.bukkit.*;
 import org.bukkit.block.Block;
@@ -13,9 +13,11 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.world.PortalCreateEvent;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
+import ro.cofi.netherratio.NetherRatio;
 import ro.cofi.netherratio.event.CustomEntityTeleportEvent;
 import ro.cofi.netherratio.event.CustomPlayerTeleportEvent;
 import ro.cofi.netherratio.event.CustomPortalCreateEvent;
+import ro.cofi.netherratio.misc.ConfigKey;
 import ro.cofi.netherratio.misc.Constants;
 import ro.cofi.netherratio.misc.LocationUtil;
 import ro.cofi.netherratio.misc.VectorAxis;
@@ -52,6 +54,8 @@ public class PortalLogicManager {
         // obtain the nether bedrock ceiling Y level
         if (nether == null) {
             netherBedrockCeiling = BACKUP_NETHER_CEILING_LEVEL; // last resort, should not happen
+            plugin.getLogger().severe(plugin.prefixMessage("Could not find the nether world. " +
+                    "Using default value for nether ceiling Y level: " + BACKUP_NETHER_CEILING_LEVEL));
             return;
         }
 
@@ -63,6 +67,8 @@ public class PortalLogicManager {
         // not found, should not happen
         if (checkedLocation.getY() == -1) {
             netherBedrockCeiling = BACKUP_NETHER_CEILING_LEVEL;
+            plugin.getLogger().severe(plugin.prefixMessage("Could not find the Y level of the nether ceiling. " +
+                    "Using default value: " + BACKUP_NETHER_CEILING_LEVEL));
             return;
         }
 
@@ -223,7 +229,7 @@ public class PortalLogicManager {
 
         int maxHorizontalOffset = plugin.getConfig().getInt("max_portal_placement_offset.horizontal");
         int maxVerticalOffset = plugin.getConfig().getInt("max_portal_placement_offset.vertical");
-        int portalHeight = getMinPortalHeight();
+        int portalHeight = getNewPortalHeight();
 
         Vector originVec = desiredDestination.toVector();
         World originWorld = desiredDestination.getWorld();
@@ -329,8 +335,8 @@ public class PortalLogicManager {
     private List<PortalBlockData> preparePortalBlocks(Location referencePoint, Axis axis, boolean generatePlatform) {
         List<PortalBlockData> data = new ArrayList<>();
 
-        int portalHeight = getMinPortalHeight();
-        int portalWidth = getMinPortalWidth();
+        int portalHeight = getNewPortalHeight();
+        int portalWidth = getNewPortalWidth();
 
         Vector direction = axis == Axis.X ? VectorAxis.X : VectorAxis.Z;
         Vector sideDirection = axis == Axis.X ? VectorAxis.Z : VectorAxis.X;
@@ -465,12 +471,20 @@ public class PortalLogicManager {
         return plugin.getConfig().getInt(ConfigKey.PORTAL_HEIGHT_MAX);
     }
 
+    private int getNewPortalHeight() {
+        return plugin.getConfig().getInt(ConfigKey.PORTAL_HEIGHT_NEW);
+    }
+
     private int getMinPortalWidth() {
         return plugin.getConfig().getInt(ConfigKey.PORTAL_WIDTH_MIN);
     }
 
     private int getMaxPortalWidth() {
         return plugin.getConfig().getInt(ConfigKey.PORTAL_WIDTH_MAX);
+    }
+
+    private int getNewPortalWidth() {
+        return plugin.getConfig().getInt(ConfigKey.PORTAL_WIDTH_NEW);
     }
 
     private record PortalBlockData(Location location, BlockData blockData) {

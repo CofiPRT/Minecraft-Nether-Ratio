@@ -3,7 +3,6 @@ package ro.cofi.netherratio.listener;
 import org.bukkit.Axis;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.Orientable;
 import org.bukkit.event.Cancellable;
@@ -31,15 +30,6 @@ public class BlockBreakListener implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onPlayerBreak(BlockBreakEvent event) {
-        List<Vector> portals = plugin.getPortalLocationManager().getPortals(World.Environment.NORMAL);
-        plugin.getLogger().info("Overworld:");
-        for (Vector portal : portals)
-            plugin.getLogger().info("____" + portal.getX() + "," + portal.getY() + "," + portal.getZ() + "____");
-        portals = plugin.getPortalLocationManager().getPortals(World.Environment.NETHER);
-        plugin.getLogger().info("Nether:");
-        for (Vector portal : portals)
-            plugin.getLogger().info("____" + portal.getX() + "," + portal.getY() + "," + portal.getZ() + "____");
-
         if (event instanceof CustomBlockBreakEvent)
             return;
 

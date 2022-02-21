@@ -1,4 +1,4 @@
-package ro.cofi.netherratio.persistence;
+package ro.cofi.netherratio.logic;
 
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -92,7 +92,7 @@ public class PortalLocationManager {
         try {
             getConfig().save(configFile);
         } catch (IOException e) {
-            plugin.getLogger().log(Level.SEVERE, "Could not save " + FILE_NAME, e);
+            plugin.getLogger().log(Level.SEVERE, plugin.prefixMessage("Could not save " + FILE_NAME), e);
         }
     }
 
@@ -101,6 +101,8 @@ public class PortalLocationManager {
      */
     public void savePortal(Location location) {
         getConfig().set(getKey(location) + "." + vecToString(location.toVector()), true);
+
+        saveConfig();
     }
 
     /**
@@ -108,6 +110,8 @@ public class PortalLocationManager {
      */
     public void deletePortal(Location location) {
         getConfig().set(getKey(location) + "." + vecToString(location.toVector()), null);
+
+        saveConfig();
     }
 
     /**
@@ -143,7 +147,9 @@ public class PortalLocationManager {
                 .toArray();
 
         if (coords.length < 3) {
-            plugin.getLogger().log(Level.SEVERE, "Invalid coordinates '" + vec + "' in config file " + FILE_NAME);
+            plugin.getLogger().severe(plugin.prefixMessage(
+                    "Invalid coordinates '" + vec + "' in config file " + FILE_NAME
+            ));
             return null;
         }
 

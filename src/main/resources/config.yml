@@ -5,12 +5,14 @@ min_distance_between_portals:
     overworld: 320
     nether: 16
 max_portal_placement_offset:
-    vertical: 256
+    vertical: 128
     horizontal: 16
 portal_size:
     height:
         min: 1
         max: 21
+        new: 3
     width:
         min: 1
         max: 21
+        new: 2

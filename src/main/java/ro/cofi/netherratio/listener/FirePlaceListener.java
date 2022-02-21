@@ -11,7 +11,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.util.Vector;
-import ro.cofi.netherratio.ConfigKey;
+import ro.cofi.netherratio.misc.ConfigKey;
 import ro.cofi.netherratio.NetherRatio;
 import ro.cofi.netherratio.misc.Constants;
 import ro.cofi.netherratio.misc.LocationUtil;
