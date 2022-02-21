@@ -121,10 +121,6 @@ public class PortalLocationManager {
         return getPortals(getKey(world));
     }
 
-    public List<Vector> getPortals(World.Environment env) {
-        return getPortals(env == World.Environment.NORMAL ? OVERWORLD_KEY : NETHER_KEY);
-    }
-
     private List<Vector> getPortals(String key) {
         ConfigurationSection section = getConfig().getConfigurationSection(key);
         if (section == null)

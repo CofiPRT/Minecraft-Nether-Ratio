@@ -27,6 +27,7 @@ import java.util.*;
 public class PortalLogicManager {
 
     private static final int BACKUP_NETHER_CEILING_LEVEL = 128;
+    private static final int NON_PLAYER_ENTITY_PORTAL_CD = 10; // in ticks, good enough as it is, no need to change
 
     private final NetherRatio plugin;
 
@@ -164,6 +165,10 @@ public class PortalLogicManager {
         destination.setPitch(entity.getLocation().getPitch());
 
         entity.teleport(destination);
+
+        // non-player entities need a portal cooldown to avoid being in a constant teleportation loop
+        if (!(entity instanceof Player))
+            entity.setPortalCooldown(NON_PLAYER_ENTITY_PORTAL_CD);
     }
 
     /**
@@ -286,10 +291,10 @@ public class PortalLogicManager {
      * If there are blocks that a portal can't replace, the location is invalid.
      */
     private SearchData isValidLocation(Location location, Axis axis, boolean mustHaveFloor) {
-        Vector direction = axis == Axis.X ? VectorAxis.X : VectorAxis.Z;
-        Vector sideDirection = axis == Axis.X ? VectorAxis.Z : VectorAxis.X;
+        Vector direction = VectorAxis.of(axis);
+        Vector sideDirection = VectorAxis.ofSide(axis);
 
-        int portalWidth = getMinPortalWidth();
+        int portalWidth = getNewPortalWidth();
 
         // check floor below volume
         boolean hasFloor = !mustHaveFloor || LocationUtil.getLocationsBetween(
@@ -338,8 +343,8 @@ public class PortalLogicManager {
         int portalHeight = getNewPortalHeight();
         int portalWidth = getNewPortalWidth();
 
-        Vector direction = axis == Axis.X ? VectorAxis.X : VectorAxis.Z;
-        Vector sideDirection = axis == Axis.X ? VectorAxis.Z : VectorAxis.X;
+        Vector direction = VectorAxis.of(axis);
+        Vector sideDirection = VectorAxis.ofSide(axis);
 
         // create the frame
         List<Location> frameBlocks = LocationUtil.getLocationsBetween(
@@ -447,7 +452,7 @@ public class PortalLogicManager {
         // bottom "left" corner, returns null if not found, just as intended
         return LocationUtil.findFrameLimit(
                 bottom,
-                ((Orientable) blockData).getAxis() == Axis.X ? VectorAxis.NX : VectorAxis.NZ,
+                VectorAxis.of(((Orientable) blockData).getAxis()).clone().multiply(-1),
                 Collections.singleton(Material.NETHER_PORTAL),
                 getMaxPortalWidth()
         );
@@ -463,20 +468,12 @@ public class PortalLogicManager {
                 plugin.getConfig().getDouble(ConfigKey.NETHER_RATIO);
     }
 
-    private int getMinPortalHeight() {
-        return plugin.getConfig().getInt(ConfigKey.PORTAL_HEIGHT_MIN);
-    }
-
     private int getMaxPortalHeight() {
         return plugin.getConfig().getInt(ConfigKey.PORTAL_HEIGHT_MAX);
     }
 
     private int getNewPortalHeight() {
         return plugin.getConfig().getInt(ConfigKey.PORTAL_HEIGHT_NEW);
-    }
-
-    private int getMinPortalWidth() {
-        return plugin.getConfig().getInt(ConfigKey.PORTAL_WIDTH_MIN);
     }
 
     private int getMaxPortalWidth() {

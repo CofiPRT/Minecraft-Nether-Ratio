@@ -8,11 +8,10 @@ import org.bukkit.block.Block;
 import org.bukkit.block.data.Orientable;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.util.Vector;
-import ro.cofi.netherratio.misc.ConfigKey;
 import ro.cofi.netherratio.NetherRatio;
+import ro.cofi.netherratio.misc.ConfigKey;
 import ro.cofi.netherratio.misc.Constants;
 import ro.cofi.netherratio.misc.LocationUtil;
 import ro.cofi.netherratio.misc.VectorAxis;
@@ -20,14 +19,15 @@ import ro.cofi.netherratio.misc.VectorAxis;
 import java.util.Arrays;
 import java.util.List;
 
-public class FirePlaceListener implements Listener {
-
-    private final NetherRatio plugin;
+public class FirePlaceListener extends AbstractListener {
 
     public FirePlaceListener(NetherRatio plugin) {
-        this.plugin = plugin;
+        super(plugin);
     }
 
+    /**
+     * Captured whenever a block gets placed. Only handle cases where a fire block is placed on a frame block.
+     */
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onFirePlace(BlockPlaceEvent event) {
         Block blockPlaced = event.getBlockPlaced();
@@ -63,6 +63,12 @@ public class FirePlaceListener implements Listener {
         plugin.getPortalLocationManager().savePortal(frameData.getBottomLeft());
     }
 
+    /**
+     * From a starting block, attempt to find a portal frame to place portal blocks inside.
+     * Attempts to find the top, bottom, left, and right limits of the frame, the last 2 being in the same axis.
+     * If all of them are found, these 4 locations identify a rectangle. All the blocks inside this rectangle
+     * must be replaceable, for we intend to place portal blocks inside.
+     */
     private PortalFrameData computePortalBlocks(Block blockPlaced, World world) {
         Location origin = blockPlaced.getLocation().toBlockLocation();
 
@@ -88,12 +94,24 @@ public class FirePlaceListener implements Listener {
         Location left = null, right = null; // according to axis
 
         // attempt on X axis, then Z axis
-        for (Vector axis : Arrays.asList(VectorAxis.X, VectorAxis.Z)) {
-            left = LocationUtil.findFrameLimit(origin, axis.clone().multiply(-1), Constants.REPLACEABLE_BLOCKS, maxWidth);
+        Axis chosenAxis = null;
+
+        for (Axis axis : Arrays.asList(Axis.X, Axis.Z)) {
+            Vector direction = VectorAxis.of(axis);
+
+            left = LocationUtil.findFrameLimit(
+                    origin,
+                    direction.clone().multiply(-1),
+                    Constants.REPLACEABLE_BLOCKS, maxWidth
+            );
             if (left == null)
                 continue;
 
-            right = LocationUtil.findFrameLimit(origin, axis.clone().multiply(1), Constants.REPLACEABLE_BLOCKS, maxWidth);
+            right = LocationUtil.findFrameLimit(
+                    origin,
+                    direction.clone().multiply(1),
+                    Constants.REPLACEABLE_BLOCKS, maxWidth
+            );
             if (right == null) {
                 left = null; // reset for future iteration
                 continue;
@@ -101,8 +119,10 @@ public class FirePlaceListener implements Listener {
 
             // keep within bounds
             double width = left.distanceSquared(right) + 1;
-            if (width >= minWidth || width <= maxWidth)
+            if (width >= minWidth && width <= maxWidth) {
+                chosenAxis = axis;
                 break;
+            }
 
             // reset for future iteration
             left = null;
@@ -110,7 +130,7 @@ public class FirePlaceListener implements Listener {
         }
 
         // horizontal limits not found
-        if (left == null)
+        if (chosenAxis == null)
             return null;
 
         Location bottomLeft = new Location(world, left.getBlockX(), bottom.getBlockY(), left.getBlockZ());
@@ -118,24 +138,23 @@ public class FirePlaceListener implements Listener {
         Location topLeft = new Location(world, left.getBlockX(), top.getBlockY(), left.getBlockZ());
         Location topRight = new Location(world, right.getBlockX(), top.getBlockY(), right.getBlockZ());
 
-        // check all frames
-        Axis horizontalAxis = getAxis(left, right);
-        Vector axisDirection = horizontalAxis == Axis.X ? VectorAxis.X : VectorAxis.Z; // what direction gets used below
+        Vector direction = VectorAxis.of(chosenAxis);
 
+        // check all frames
         if (!checkFrame(bottomLeft, bottomRight, VectorAxis.NY) ||
             !checkFrame(topLeft, topRight, VectorAxis.Y) ||
-            !checkFrame(bottomLeft, topLeft, axisDirection.clone().multiply(-1)) ||
-            !checkFrame(bottomRight, topRight, axisDirection))
+            !checkFrame(bottomLeft, topLeft, direction.clone().multiply(-1)) ||
+            !checkFrame(bottomRight, topRight, direction))
             return null;
 
         // this is indeed a portal, return its blocks to check for perms
-        return new PortalFrameData(bottomLeft, topRight, horizontalAxis);
+        return new PortalFrameData(bottomLeft, topRight, chosenAxis);
     }
 
-    private Axis getAxis(Location left, Location right) {
-        return left.getBlockX() == right.getBlockX() ? Axis.Z : Axis.X;
-    }
-
+    /**
+     * Given two locations that form a line of blocks, checks if all blocks adjacent to this line (e.g.: above it)
+     * are made out of the frame material.
+     */
     private boolean checkFrame(Location corner1, Location corner2, Vector frameDirection) {
         World world = corner1.getWorld();
 
@@ -146,6 +165,9 @@ public class FirePlaceListener implements Listener {
         return true;
     }
 
+    /**
+     * Data to return from the search process, using it to effectively place the portal into the world.
+     */
     private static class PortalFrameData {
 
         private final List<Location> innerLocations;

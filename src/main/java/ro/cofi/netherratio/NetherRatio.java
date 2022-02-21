@@ -3,10 +3,7 @@ package ro.cofi.netherratio;
 import org.bukkit.ChatColor;
 import org.bukkit.plugin.java.JavaPlugin;
 import ro.cofi.netherratio.command.ReloadCommand;
-import ro.cofi.netherratio.listener.BlockBreakListener;
-import ro.cofi.netherratio.listener.EntityTeleportListener;
-import ro.cofi.netherratio.listener.FirePlaceListener;
-import ro.cofi.netherratio.listener.PortalCreateListener;
+import ro.cofi.netherratio.listener.*;
 import ro.cofi.netherratio.logic.PortalLocationManager;
 import ro.cofi.netherratio.logic.PortalLogicManager;
 
@@ -29,10 +26,12 @@ public final class NetherRatio extends JavaPlugin {
         portalLogicManager = new PortalLogicManager(this);
 
         // register listeners
+        getServer().getPluginManager().registerEvents(new ExplodeListener(this), this);
         getServer().getPluginManager().registerEvents(new FirePlaceListener(this), this);
+        getServer().getPluginManager().registerEvents(new BlockBreakListener(this), this);
         getServer().getPluginManager().registerEvents(new PortalCreateListener(this), this);
         getServer().getPluginManager().registerEvents(new EntityTeleportListener(this), this);
-        getServer().getPluginManager().registerEvents(new BlockBreakListener(this), this);
+        getServer().getPluginManager().registerEvents(new EntityPortalEnterListener(this), this);
 
         // register commands
         Objects.requireNonNull(getServer().getPluginCommand("nrreload")).setExecutor(new ReloadCommand(this));

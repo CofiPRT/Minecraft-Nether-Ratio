@@ -5,7 +5,6 @@ import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityTeleportEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import ro.cofi.netherratio.NetherRatio;
@@ -15,14 +14,18 @@ import ro.cofi.netherratio.misc.Constants;
 
 import java.util.Objects;
 
-public class EntityTeleportListener implements Listener {
-
-    private final NetherRatio plugin;
+public class EntityTeleportListener extends AbstractListener {
 
     public EntityTeleportListener(NetherRatio plugin) {
-        this.plugin = plugin;
+        super(plugin);
     }
 
+    /**
+     * Captured every time a player teleports. Only handle cases when the teleport cause is a nether portal.
+     * This may get triggered when the game finds a vanilla nether portal to teleport to, under normal ratio.
+     * If the original portal is a custom one, we want the destination to also be a custom one.
+     * Otherwise, allow normal vanilla teleportation.
+     */
     @EventHandler(ignoreCancelled = true)
     public void onPlayerTeleport(PlayerTeleportEvent event) {
         if (event instanceof CustomPlayerTeleportEvent)
@@ -35,6 +38,12 @@ public class EntityTeleportListener implements Listener {
         handleEvent(event, event.getPlayer());
     }
 
+    /**
+     * Captured every time an entity teleports. Only handle cases when the teleport is across dimensions.
+     * This may get triggered when the game finds a vanilla nether portal to teleport to, under normal ratio.
+     * If the original portal is a custom one, we want the destination to also be a custom one.
+     * Otherwise, allow normal vanilla teleportation.
+     */
     @EventHandler(ignoreCancelled = true)
     public void onEntityTeleport(EntityTeleportEvent event) {
         if (event instanceof CustomEntityTeleportEvent)

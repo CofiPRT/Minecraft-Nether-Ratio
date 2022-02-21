@@ -1,6 +1,7 @@
 package ro.cofi.netherratio.listener;
 
 import org.bukkit.Axis;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -8,7 +9,6 @@ import org.bukkit.block.data.Orientable;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.util.Vector;
 import ro.cofi.netherratio.NetherRatio;
@@ -20,14 +20,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class BlockBreakListener implements Listener {
-
-    private final NetherRatio plugin;
+public class BlockBreakListener extends AbstractListener {
 
     public BlockBreakListener(NetherRatio plugin) {
-        this.plugin = plugin;
+        super(plugin);
     }
 
+    /**
+     * Whenever a player breaks a block. Tests if the block is a portal one (only possible in creative mode) or made
+     * out of the material used for the portal frame.
+     */
     @EventHandler(ignoreCancelled = true)
     public void onPlayerBreak(BlockBreakEvent event) {
         if (event instanceof CustomBlockBreakEvent)
@@ -49,6 +51,9 @@ public class BlockBreakListener implements Listener {
         handleNewEvent(event, referencePoints);
     }
 
+    /**
+     * The broken block is a portal block (player must be in creative). Simply compute its reference point.
+     */
     private List<Location> getFromNetherPortal(Block block) {
         Location referencePoint = plugin.getPortalLogicManager().getReferencePoint(block.getLocation());
         if (referencePoint == null)
@@ -57,6 +62,10 @@ public class BlockBreakListener implements Listener {
         return Collections.singletonList(referencePoint);
     }
 
+    /**
+     * The broken block is a frame block. Look for what portal blocks it is connected to, and compute their
+     * reference points.
+     */
     private List<Location> getFromFrame(Block block) {
         Location origin = block.getLocation();
         List<Location> connectedPortalBlocks = new ArrayList<>();
@@ -83,6 +92,9 @@ public class BlockBreakListener implements Listener {
         return referencePoints;
     }
 
+    /**
+     * Check if there is a portal block of a specific orientation, on a specific side of the given origin.
+     */
     private Location checkAdjacent(Location origin, Vector direction, Axis axis) {
         Block targetBlock = origin.clone().add(direction).getBlock();
 
@@ -95,6 +107,8 @@ public class BlockBreakListener implements Listener {
 
     private void handleNewEvent(BlockBreakEvent event, List<Location> referencePoints) {
         Event newEvent = new CustomBlockBreakEvent(event.getBlock(), event.getPlayer());
+        Bukkit.getPluginManager().callEvent(newEvent);
+
         if (((Cancellable) newEvent).isCancelled())
             return;
 
