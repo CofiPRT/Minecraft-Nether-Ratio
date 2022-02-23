@@ -1,11 +1,11 @@
 package ro.cofi.netherratio.listener;
 
-import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.world.PortalCreateEvent;
 import ro.cofi.netherratio.NetherRatio;
 import ro.cofi.netherratio.event.CustomPortalCreateEvent;
+import ro.cofi.netherratio.logic.ReferencePoint;
 
 public class PortalCreateListener extends AbstractListener {
 
@@ -33,7 +33,7 @@ public class PortalCreateListener extends AbstractListener {
             return;
 
         // only intervene if the portal type is custom
-        Location referencePoint = plugin.getPortalLogicManager().getReferencePoint(entity);
+        ReferencePoint referencePoint = plugin.getPortalLogicManager().getReferencePoint(entity);
         if (referencePoint == null)
             return;
 

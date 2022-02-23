@@ -16,7 +16,8 @@ public interface Constants {
             Material.FIRE
     );
 
-    Material FRAME_BLOCK = Material.CRYING_OBSIDIAN;
+    Material BACKUP_FRAME_BLOCK = Material.CRYING_OBSIDIAN;
+    Material VANILLA_FRAME_BLOCK = Material.OBSIDIAN;
 
     Set<World.Environment> VALID_ENVIRONMENTS = EnumSet.of(
             World.Environment.NORMAL,

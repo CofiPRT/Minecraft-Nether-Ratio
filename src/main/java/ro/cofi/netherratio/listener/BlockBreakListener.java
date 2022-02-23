@@ -13,6 +13,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.util.Vector;
 import ro.cofi.netherratio.NetherRatio;
 import ro.cofi.netherratio.event.CustomBlockBreakEvent;
+import ro.cofi.netherratio.logic.ReferencePoint;
 import ro.cofi.netherratio.misc.Constants;
 import ro.cofi.netherratio.misc.VectorAxis;
 
@@ -36,11 +37,16 @@ public class BlockBreakListener extends AbstractListener {
             return;
 
         Block block = event.getBlock();
-        List<Location> referencePoints = new ArrayList<>();
+
+        if (!Constants.VALID_ENVIRONMENTS.contains(block.getWorld().getEnvironment()))
+            return;
+
+        List<ReferencePoint> referencePoints = new ArrayList<>();
 
         if (block.getType() == Material.NETHER_PORTAL)
             referencePoints.addAll(getFromNetherPortal(block));
-        else if (block.getType() == Constants.FRAME_BLOCK)
+        else if (block.getType() == plugin.getConfigManager().getFrameBlock() ||
+                block.getType() == Constants.VANILLA_FRAME_BLOCK)
             referencePoints.addAll(getFromFrame(block));
 
         // no point in firing any events
@@ -54,8 +60,8 @@ public class BlockBreakListener extends AbstractListener {
     /**
      * The broken block is a portal block (player must be in creative). Simply compute its reference point.
      */
-    private List<Location> getFromNetherPortal(Block block) {
-        Location referencePoint = plugin.getPortalLogicManager().getReferencePoint(block.getLocation());
+    private List<ReferencePoint> getFromNetherPortal(Block block) {
+        ReferencePoint referencePoint = plugin.getPortalLogicManager().getReferencePoint(block.getLocation());
         if (referencePoint == null)
             return Collections.emptyList();
 
@@ -66,7 +72,7 @@ public class BlockBreakListener extends AbstractListener {
      * The broken block is a frame block. Look for what portal blocks it is connected to, and compute their
      * reference points.
      */
-    private List<Location> getFromFrame(Block block) {
+    private List<ReferencePoint> getFromFrame(Block block) {
         Location origin = block.getLocation();
         List<Location> connectedPortalBlocks = new ArrayList<>();
 
@@ -78,13 +84,13 @@ public class BlockBreakListener extends AbstractListener {
         connectedPortalBlocks.add(checkAdjacent(origin, VectorAxis.NY, null));
 
         // compute reference points
-        List<Location> referencePoints = new ArrayList<>();
+        List<ReferencePoint> referencePoints = new ArrayList<>();
 
         for (Location connectedPortalBlock : connectedPortalBlocks) {
             if (connectedPortalBlock == null)
                 continue;
 
-            Location referencePoint = plugin.getPortalLogicManager().getReferencePoint(connectedPortalBlock);
+            ReferencePoint referencePoint = plugin.getPortalLogicManager().getReferencePoint(connectedPortalBlock);
             if (referencePoint != null)
                 referencePoints.add(referencePoint);
         }
@@ -105,7 +111,7 @@ public class BlockBreakListener extends AbstractListener {
         return null;
     }
 
-    private void handleNewEvent(BlockBreakEvent event, List<Location> referencePoints) {
+    private void handleNewEvent(BlockBreakEvent event, List<ReferencePoint> referencePoints) {
         Event newEvent = new CustomBlockBreakEvent(event.getBlock(), event.getPlayer());
         Bukkit.getPluginManager().callEvent(newEvent);
 
@@ -113,8 +119,8 @@ public class BlockBreakListener extends AbstractListener {
             return;
 
         // remove from the lookup
-        for (Location referencePoint : referencePoints)
-            plugin.getPortalLocationManager().deletePortal(referencePoint);
+        for (ReferencePoint referencePoint : referencePoints)
+            plugin.getPortalLocationManager().deletePortal(referencePoint.getLocation(), referencePoint.isCustom());
     }
 
 }

@@ -1,6 +1,5 @@
 package ro.cofi.netherratio.listener;
 
-import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.event.Cancellable;
@@ -10,6 +9,7 @@ import org.bukkit.event.player.PlayerTeleportEvent;
 import ro.cofi.netherratio.NetherRatio;
 import ro.cofi.netherratio.event.CustomEntityTeleportEvent;
 import ro.cofi.netherratio.event.CustomPlayerTeleportEvent;
+import ro.cofi.netherratio.logic.ReferencePoint;
 import ro.cofi.netherratio.misc.Constants;
 
 import java.util.Objects;
@@ -31,6 +31,9 @@ public class EntityTeleportListener extends AbstractListener {
         if (event instanceof CustomPlayerTeleportEvent)
             return;
 
+        if (!Constants.VALID_ENVIRONMENTS.contains(event.getPlayer().getWorld().getEnvironment()))
+            return;
+
         // only intervene in nether portal teleportation
         if (event.getCause() != PlayerTeleportEvent.TeleportCause.NETHER_PORTAL)
             return;
@@ -47,6 +50,9 @@ public class EntityTeleportListener extends AbstractListener {
     @EventHandler(ignoreCancelled = true)
     public void onEntityTeleport(EntityTeleportEvent event) {
         if (event instanceof CustomEntityTeleportEvent)
+            return;
+
+        if (!Constants.VALID_ENVIRONMENTS.contains(event.getEntity().getWorld().getEnvironment()))
             return;
 
         // only intervene in nether portal teleportation
@@ -66,7 +72,7 @@ public class EntityTeleportListener extends AbstractListener {
     }
 
     public void handleEvent(Cancellable event, Entity entity) {
-        Location referencePoint = plugin.getPortalLogicManager().getReferencePoint(entity);
+        ReferencePoint referencePoint = plugin.getPortalLogicManager().getReferencePoint(entity);
         if (referencePoint == null)
             return;
 

@@ -17,7 +17,6 @@ import ro.cofi.netherratio.NetherRatio;
 import ro.cofi.netherratio.event.CustomEntityTeleportEvent;
 import ro.cofi.netherratio.event.CustomPlayerTeleportEvent;
 import ro.cofi.netherratio.event.CustomPortalCreateEvent;
-import ro.cofi.netherratio.misc.ConfigKey;
 import ro.cofi.netherratio.misc.Constants;
 import ro.cofi.netherratio.misc.LocationUtil;
 import ro.cofi.netherratio.misc.VectorAxis;
@@ -28,6 +27,12 @@ public class PortalLogicManager {
 
     private static final int BACKUP_NETHER_CEILING_LEVEL = 128;
     private static final int NON_PLAYER_ENTITY_PORTAL_CD = 10; // in ticks, good enough as it is, no need to change
+    private static final int PREFERRED_OVERWORLD_Y = 64;
+
+    private static final double VANILLA_RATIO_OVERWORLD = 8;
+    private static final double VANILLA_RATIO_NETHER = 1;
+    private static final double VANILLA_MIN_DISTANCE_BETWEEN_PORTALS_OVERWORLD = 128;
+    private static final double VANILLA_MIN_DISTANCE_BETWEEN_PORTALS_NETHER = 16;
 
     private final NetherRatio plugin;
 
@@ -84,44 +89,68 @@ public class PortalLogicManager {
      *
      * If a portal is available (either already existing or following its creation), the entity is teleported.
      */
-    public void handleEntityTeleport(Entity entity, Location referencePoint) {
+    public void handleEntityTeleport(Entity entity, ReferencePoint referencePoint) {
+        Location referenceLocation = referencePoint.getLocation();
+        boolean isCustom = referencePoint.isCustom();
+
         // check if there is an existing portal to teleport to
         World destinationWorld;
         double maxDistance;
         double scaleFactor;
+        double preferredY;
 
         // handle teleport direction
         if (entity.getWorld().getEnvironment() == World.Environment.NORMAL) {
-            maxDistance = plugin.getConfig().getDouble("min_distance_between_portals.nether");
-            scaleFactor = getOverworldToNetherFactor();
+            if (isCustom) {
+                maxDistance = plugin.getConfigManager().getMinDistanceBetweenPortalsNether();
+                scaleFactor = plugin.getConfigManager().getRatioNether() /
+                        plugin.getConfigManager().getRatioOverworld();
+            } else {
+                maxDistance = VANILLA_MIN_DISTANCE_BETWEEN_PORTALS_NETHER;
+                scaleFactor = VANILLA_RATIO_NETHER / VANILLA_RATIO_OVERWORLD;
+            }
+
             destinationWorld = nether;
+
+            // fixed Y for overworld
+            preferredY = PREFERRED_OVERWORLD_Y;
         } else {
-            maxDistance = plugin.getConfig().getDouble("min_distance_between_portals.overworld");
-            scaleFactor = getNetherToOverworldFactor();
+            if (isCustom) {
+                maxDistance = plugin.getConfigManager().getMinDistanceBetweenPortalsOverworld();
+                scaleFactor = plugin.getConfigManager().getRatioOverworld() /
+                        plugin.getConfigManager().getRatioNether();
+            } else {
+                maxDistance = VANILLA_MIN_DISTANCE_BETWEEN_PORTALS_OVERWORLD;
+                scaleFactor = VANILLA_RATIO_OVERWORLD / VANILLA_RATIO_NETHER;
+            }
+
             destinationWorld = overworld;
+
+            // interpolate overworld height to nether height, not higher than the nether bedrock ceiling
+            preferredY = LocationUtil.mapInterval(
+                    overworld.getMinHeight(),
+                    overworld.getMaxHeight(),
+                    nether.getMinHeight(),
+                    netherBedrockCeiling,
+                    referenceLocation.getY()
+            );
         }
 
-        List<Vector> destinationPortals = plugin.getPortalLocationManager().getPortals(destinationWorld);
+        // scale X and Z
+        Vector scaledReferencePoint = referenceLocation.toVector().multiply(scaleFactor);
+        scaledReferencePoint.setY(preferredY);
 
-        // scale X and Z, but interpolate Y
-        Vector scaledReferencePoint = referencePoint.toVector().multiply(scaleFactor);
-        scaledReferencePoint.setY(LocationUtil.mapInterval(
-                referencePoint.getWorld().getMinHeight(),
-                referencePoint.getWorld().getMaxHeight(),
-                destinationWorld.getMinHeight(),
-                Objects.equals(destinationWorld, nether) ? netherBedrockCeiling : destinationWorld.getMaxHeight(),
-                referencePoint.getY()
-        ));
+        List<Vector> destinationPortals = plugin.getPortalLocationManager().getPortals(destinationWorld, isCustom);
 
         // if a portal is available, teleport to it; otherwise, create a new portal and teleport to it
         Location destination = destinationPortals.stream()
                 .map(portalLocation -> {
-                    double distance = scaledReferencePoint.clone()
-                            .setY(portalLocation.getY())
-                            .distance(portalLocation);
+                        double distance = scaledReferencePoint.clone()
+                                .setY(portalLocation.getY())
+                                .distance(portalLocation);
 
-                    // map around an entry - we want to compare based on distance but return the original object
-                    return new AbstractMap.SimpleEntry<>(portalLocation, distance);
+                        // map around an entry - we want to compare based on distance but return the original object
+                        return new AbstractMap.SimpleEntry<>(portalLocation, distance);
                 })
                 .filter(entry -> entry.getValue() < maxDistance)
                 .min(Comparator.comparingDouble(AbstractMap.SimpleEntry::getValue))
@@ -130,8 +159,9 @@ public class PortalLogicManager {
                 .orElseGet(() -> createNewPortal(
                         LocationUtil.fromVector(destinationWorld, scaledReferencePoint),
                         entity,
-                        ((Orientable) referencePoint.getBlock().getBlockData()).getAxis())
-                );
+                        ((Orientable) referenceLocation.getBlock().getBlockData()).getAxis(),
+                        isCustom
+                ));
 
         // may be null due to other event cancellations
         if (destination == null)
@@ -167,7 +197,9 @@ public class PortalLogicManager {
         entity.teleport(destination);
 
         // non-player entities need a portal cooldown to avoid being in a constant teleportation loop
-        if (!(entity instanceof Player))
+        if (entity instanceof Player player)
+            player.playSound(player.getLocation(), Sound.BLOCK_PORTAL_TRAVEL, SoundCategory.AMBIENT, 1, 1);
+        else
             entity.setPortalCooldown(NON_PLAYER_ENTITY_PORTAL_CD);
     }
 
@@ -175,25 +207,30 @@ public class PortalLogicManager {
      * Attempt to create a portal as close to the destination as possible.
      * May fail in special cases (e.g.: a player not having perms to build at the destination)./
      */
-    private Location createNewPortal(Location desiredDestination, Entity entity, Axis preferredAxis) {
+    private Location createNewPortal(Location desiredDestination, Entity entity, Axis preferredAxis, boolean isCustom) {
         // only players may create portals
         if (!(entity instanceof Player))
             return null;
 
         // perform vanilla checks - search for a simple, empty location, atop a floor of buildable blocks
-        SearchData searchData = findValidLocation(desiredDestination, preferredAxis, true);
+        SearchData searchData = findValidLocation(desiredDestination, preferredAxis, true, isCustom);
 
         // remove the need for a floor - may generate in the air
-        if (searchData == null)
-            searchData = findValidLocation(desiredDestination, preferredAxis, false);
+        if (searchData == null && plugin.getConfigManager().isFloatingPlacementAllowed())
+            searchData = findValidLocation(desiredDestination, preferredAxis, false, isCustom);
 
         // force a portal at the location, wherever it may happen to generate, and overwrite whatever is there
-        if (searchData == null)
+        if (searchData == null && plugin.getConfigManager().isForcedPlacementAllowed())
             searchData = new SearchData(desiredDestination, preparePortalBlocks(
                     desiredDestination,
                     preferredAxis,
-                    true)
-            );
+                    true,
+                    isCustom
+            ));
+
+        // if after all of this we still don't have a portal, stop
+        if (searchData == null)
+            return null;
 
         List<PortalBlockData> portalBlocks = searchData.getPortalBlockData();
 
@@ -218,7 +255,7 @@ public class PortalLogicManager {
             data.getLocation().getBlock().setBlockData(data.getBlockData());
 
         // save this table for lookup
-        plugin.getPortalLocationManager().savePortal(searchData.getLocation());
+        plugin.getPortalLocationManager().savePortal(searchData.getLocation(), isCustom);
 
         return searchData.getLocation();
     }
@@ -228,13 +265,14 @@ public class PortalLogicManager {
      * destination, expanding the search in a spherical manner to ensure that the result is the closest available
      * location.
      */
-    private SearchData findValidLocation(Location desiredDestination, Axis preferredAxis, boolean mustHaveFloor) {
+    private SearchData findValidLocation(Location desiredDestination, Axis preferredAxis,
+                                         boolean mustHaveFloor, boolean isCustom) {
         Set<Location> checked = new HashSet<>();
         Queue<Location> toCheck = new LinkedList<>();
 
-        int maxHorizontalOffset = plugin.getConfig().getInt("max_portal_placement_offset.horizontal");
-        int maxVerticalOffset = plugin.getConfig().getInt("max_portal_placement_offset.vertical");
-        int portalHeight = getNewPortalHeight();
+        int maxHorizontalOffset = plugin.getConfigManager().getMaxPortalPlacementOffsetHorizontal();
+        int maxVerticalOffset = plugin.getConfigManager().getMaxPortalPlacementOffsetVertical();
+        int portalHeight = plugin.getConfigManager().getPortalSizeHeightNew();
 
         Vector originVec = desiredDestination.toVector();
         World originWorld = desiredDestination.getWorld();
@@ -272,12 +310,12 @@ public class PortalLogicManager {
                         toCheck.add(current.clone().add(x, y, z));
 
             // stop when a valid location has been found, otherwise continue searching
-            SearchData data = isValidLocation(current, preferredAxis, mustHaveFloor);
+            SearchData data = isValidLocation(current, preferredAxis, mustHaveFloor, isCustom);
             if (data != null)
                 return data;
 
             // attempt the other orientation
-            data = isValidLocation(current, otherAxis, mustHaveFloor);
+            data = isValidLocation(current, otherAxis, mustHaveFloor, isCustom);
             if (data != null)
                 return data;
         }
@@ -290,11 +328,11 @@ public class PortalLogicManager {
      * The portal must have a floor below it made out of buildable blocks.
      * If there are blocks that a portal can't replace, the location is invalid.
      */
-    private SearchData isValidLocation(Location location, Axis axis, boolean mustHaveFloor) {
+    private SearchData isValidLocation(Location location, Axis axis, boolean mustHaveFloor, boolean isCustom) {
         Vector direction = VectorAxis.of(axis);
         Vector sideDirection = VectorAxis.ofSide(axis);
 
-        int portalWidth = getNewPortalWidth();
+        int portalWidth = plugin.getConfigManager().getPortalSizeWidthNew();
 
         // check floor below volume
         boolean hasFloor = !mustHaveFloor || LocationUtil.getLocationsBetween(
@@ -311,7 +349,7 @@ public class PortalLogicManager {
             return null;
 
         // check volume
-        List<PortalBlockData> blocks = preparePortalBlocks(location, axis, !mustHaveFloor);
+        List<PortalBlockData> blocks = preparePortalBlocks(location, axis, !mustHaveFloor, isCustom);
 
         // if a block already exists in the world, it is good; if it doesn't, the existing block must be replaceable
         for (PortalBlockData data : blocks) {
@@ -337,11 +375,12 @@ public class PortalLogicManager {
      * and, possibly, auxiliary blocks to serve as a platform for the player to step on when exiting
      * the portal, (also out of crying obsidian).
      */
-    private List<PortalBlockData> preparePortalBlocks(Location referencePoint, Axis axis, boolean generatePlatform) {
+    private List<PortalBlockData> preparePortalBlocks(Location referencePoint, Axis axis,
+                                                      boolean generatePlatform, boolean isCustom) {
         List<PortalBlockData> data = new ArrayList<>();
 
-        int portalHeight = getNewPortalHeight();
-        int portalWidth = getNewPortalWidth();
+        int portalHeight = plugin.getConfigManager().getPortalSizeHeightNew();
+        int portalWidth = plugin.getConfigManager().getPortalSizeWidthNew();
 
         Vector direction = VectorAxis.of(axis);
         Vector sideDirection = VectorAxis.ofSide(axis);
@@ -354,7 +393,8 @@ public class PortalLogicManager {
                         .add(VectorAxis.Y.clone().multiply(portalHeight))
         );
 
-        BlockData frame = Constants.FRAME_BLOCK.createBlockData();
+        BlockData frame = isCustom ? plugin.getConfigManager().getFrameBlock().createBlockData() :
+                Constants.VANILLA_FRAME_BLOCK.createBlockData();
         BlockData air = Material.AIR.createBlockData();
 
         for (Location location : frameBlocks)
@@ -406,7 +446,7 @@ public class PortalLogicManager {
      *
      * Returns {@code null} if the entity is not touching a portal, or a portal frame couldn't be found.
      */
-    public Location getReferencePoint(Entity entity) {
+    public ReferencePoint getReferencePoint(Entity entity) {
         World world = entity.getWorld();
         Location entityLocation = entity.getLocation();
 
@@ -433,12 +473,12 @@ public class PortalLogicManager {
      *
      * Returns {@code null} if a portal frame couldn't be found.
      */
-    public Location getReferencePoint(Location portalBlockLocation) {
-        Location bottom = LocationUtil.findFrameLimit(
+    public ReferencePoint getReferencePoint(Location portalBlockLocation) {
+        ReferencePoint bottom = findFrameLimit(
                 portalBlockLocation,
                 VectorAxis.NY,
                 Collections.singleton(Material.NETHER_PORTAL),
-                getMaxPortalHeight()
+                plugin.getConfigManager().getPortalSizeHeightMax()
         );
 
         if (bottom == null)
@@ -450,38 +490,38 @@ public class PortalLogicManager {
             return null;
 
         // bottom "left" corner, returns null if not found, just as intended
-        return LocationUtil.findFrameLimit(
-                bottom,
+        return findFrameLimit(
+                bottom.getLocation(),
                 VectorAxis.of(((Orientable) blockData).getAxis()).clone().multiply(-1),
                 Collections.singleton(Material.NETHER_PORTAL),
-                getMaxPortalWidth()
+                plugin.getConfigManager().getPortalSizeWidthMax()
         );
     }
 
-    private double getOverworldToNetherFactor() {
-        return plugin.getConfig().getDouble(ConfigKey.NETHER_RATIO) /
-                plugin.getConfig().getDouble(ConfigKey.OVERWORLD_RATIO);
-    }
+    /**
+     * Start traversing from an original location towards a specific direction until encountering a frame block.
+     * Return the last location before encountering said block.
+     */
+    public ReferencePoint findFrameLimit(Location origin, Vector direction, Set<Material> innerBlocks, int maxOffset) {
+        World world = origin.getWorld();
 
-    private double getNetherToOverworldFactor() {
-        return plugin.getConfig().getDouble(ConfigKey.OVERWORLD_RATIO) /
-                plugin.getConfig().getDouble(ConfigKey.NETHER_RATIO);
-    }
+        for (int offset = 0; offset < maxOffset; offset++) {
+            Location target = origin.clone().add(direction.clone().multiply(offset + 1));
+            Material targetBlockType = world.getBlockAt(target).getType();
 
-    private int getMaxPortalHeight() {
-        return plugin.getConfig().getInt(ConfigKey.PORTAL_HEIGHT_MAX);
-    }
+            // look for the frame
+            if (targetBlockType == plugin.getConfigManager().getFrameBlock())
+                return new ReferencePoint(target.subtract(direction), true);
+            else if (targetBlockType == Constants.VANILLA_FRAME_BLOCK)
+                return new ReferencePoint(target.subtract(direction), false);
 
-    private int getNewPortalHeight() {
-        return plugin.getConfig().getInt(ConfigKey.PORTAL_HEIGHT_NEW);
-    }
+            // a non-replaceable block has been reached, and it's not a valid frame block
+            if (!innerBlocks.contains(targetBlockType))
+                return null;
+        }
 
-    private int getMaxPortalWidth() {
-        return plugin.getConfig().getInt(ConfigKey.PORTAL_WIDTH_MAX);
-    }
-
-    private int getNewPortalWidth() {
-        return plugin.getConfig().getInt(ConfigKey.PORTAL_WIDTH_NEW);
+        // no limit found within the bounds
+        return null;
     }
 
     private record PortalBlockData(Location location, BlockData blockData) {

@@ -6,6 +6,7 @@ import ro.cofi.netherratio.command.ReloadCommand;
 import ro.cofi.netherratio.listener.*;
 import ro.cofi.netherratio.logic.PortalLocationManager;
 import ro.cofi.netherratio.logic.PortalLogicManager;
+import ro.cofi.netherratio.misc.ConfigManager;
 
 import java.util.Objects;
 
@@ -15,6 +16,7 @@ public final class NetherRatio extends JavaPlugin {
 
     private PortalLocationManager portalLocationManager;
     private PortalLogicManager portalLogicManager;
+    private ConfigManager configManager;
 
     @Override
     public void onEnable() {
@@ -24,6 +26,7 @@ public final class NetherRatio extends JavaPlugin {
         // init fields
         portalLocationManager = new PortalLocationManager(this);
         portalLogicManager = new PortalLogicManager(this);
+        configManager = new ConfigManager(this);
 
         // register listeners
         getServer().getPluginManager().registerEvents(new ExplodeListener(this), this);
@@ -48,6 +51,10 @@ public final class NetherRatio extends JavaPlugin {
 
     public PortalLogicManager getPortalLogicManager() {
         return portalLogicManager;
+    }
+
+    public ConfigManager getConfigManager() {
+        return configManager;
     }
 
     public String prefixMessage(String message) {

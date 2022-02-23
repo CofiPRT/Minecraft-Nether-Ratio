@@ -1,11 +1,12 @@
 package ro.cofi.netherratio.listener;
 
-import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.entity.EntityPortalEnterEvent;
 import ro.cofi.netherratio.NetherRatio;
+import ro.cofi.netherratio.logic.ReferencePoint;
+import ro.cofi.netherratio.misc.Constants;
 
 public class EntityPortalEnterListener extends AbstractListener {
 
@@ -23,6 +24,9 @@ public class EntityPortalEnterListener extends AbstractListener {
         if (entity instanceof Player)
             return;
 
+        if (!Constants.VALID_ENVIRONMENTS.contains(entity.getWorld().getEnvironment()))
+            return;
+
         // if the entity has portal cooldown, preserve it, so that the entity has to leave the portal for it to go away
         int portalCooldown = entity.getPortalCooldown();
 
@@ -32,7 +36,7 @@ public class EntityPortalEnterListener extends AbstractListener {
         }
 
         // only intervene in custom nether portal teleportation
-        Location referencePoint = plugin.getPortalLogicManager().getReferencePoint(entity);
+        ReferencePoint referencePoint = plugin.getPortalLogicManager().getReferencePoint(entity);
         if (referencePoint == null)
             return;
 

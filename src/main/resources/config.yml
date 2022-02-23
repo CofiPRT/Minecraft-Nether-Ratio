@@ -1,6 +1,9 @@
 ratio:
     overworld: 20
     nether: 1
+frame_block: "minecraft:crying_obsidian"
+allow_floating_placement: true
+allow_forced_placement: true
 min_distance_between_portals:
     overworld: 320
     nether: 16

@@ -21,9 +21,13 @@ import java.util.stream.Collectors;
 public class PortalLocationManager {
 
     private static final String FILE_NAME = "portals.yml";
+
+    private static final Pattern COORD_SEPARATOR = Pattern.compile(",");
+
     private static final String OVERWORLD_KEY = "overworld";
     private static final String NETHER_KEY = "nether";
-    private static final Pattern COORD_SEPARATOR = Pattern.compile(",");
+    private static final String CUSTOM_KEY = "custom";
+    private static final String VANILLA_KEY = "vanilla";
 
     private final NetherRatio plugin;
 
@@ -99,8 +103,8 @@ public class PortalLocationManager {
     /**
      * Save a portal into the config.
      */
-    public void savePortal(Location location) {
-        getConfig().set(getKey(location) + "." + vecToString(location.toVector()), true);
+    public void savePortal(Location location, boolean isCustom) {
+        getConfig().set(getWorldKey(location, isCustom) + "." + vecToString(location.toVector()), true);
 
         saveConfig();
     }
@@ -108,8 +112,8 @@ public class PortalLocationManager {
     /**
      * Delete a portal from the config.
      */
-    public void deletePortal(Location location) {
-        getConfig().set(getKey(location) + "." + vecToString(location.toVector()), null);
+    public void deletePortal(Location location, boolean isCustom) {
+        getConfig().set(getWorldKey(location, isCustom) + "." + vecToString(location.toVector()), null);
 
         saveConfig();
     }
@@ -117,12 +121,8 @@ public class PortalLocationManager {
     /**
      * Get all portals in the given world.
      */
-    public List<Vector> getPortals(World world) {
-        return getPortals(getKey(world));
-    }
-
-    private List<Vector> getPortals(String key) {
-        ConfigurationSection section = getConfig().getConfigurationSection(key);
+    public List<Vector> getPortals(World world, boolean isCustom) {
+        ConfigurationSection section = getConfig().getConfigurationSection(getWorldKey(world, isCustom));
         if (section == null)
             return Collections.emptyList();
 
@@ -152,12 +152,13 @@ public class PortalLocationManager {
         return new Vector(coords[0], coords[1], coords[2]);
     }
 
-    private String getKey(Location location) {
-        return getKey(location.getWorld());
+    private String getWorldKey(Location location, boolean isCustom) {
+        return getWorldKey(location.getWorld(), isCustom);
     }
 
-    private String getKey(World world) {
-        return world.getEnvironment() == World.Environment.NORMAL ? OVERWORLD_KEY : NETHER_KEY;
+    private String getWorldKey(World world, boolean isCustom) {
+        return (isCustom ? CUSTOM_KEY : VANILLA_KEY) + "." +
+                (world.getEnvironment() == World.Environment.NORMAL ? OVERWORLD_KEY : NETHER_KEY);
     }
 
 }

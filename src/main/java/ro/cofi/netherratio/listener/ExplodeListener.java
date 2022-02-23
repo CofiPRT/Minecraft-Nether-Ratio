@@ -1,7 +1,6 @@
 package ro.cofi.netherratio.listener;
 
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.event.Cancellable;
@@ -12,6 +11,8 @@ import org.bukkit.event.entity.EntityExplodeEvent;
 import ro.cofi.netherratio.NetherRatio;
 import ro.cofi.netherratio.event.CustomBlockExplodeEvent;
 import ro.cofi.netherratio.event.CustomEntityExplodeEvent;
+import ro.cofi.netherratio.logic.ReferencePoint;
+import ro.cofi.netherratio.misc.Constants;
 
 import java.util.List;
 import java.util.Objects;
@@ -31,6 +32,9 @@ public class ExplodeListener extends AbstractListener {
         if (event instanceof CustomBlockExplodeEvent)
             return;
 
+        if (!Constants.VALID_ENVIRONMENTS.contains(event.getBlock().getWorld().getEnvironment()))
+            return;
+
         handleNewEvent(event.blockList(), () -> new CustomBlockExplodeEvent(
                 event.getBlock(),
                 event.blockList(),
@@ -46,6 +50,9 @@ public class ExplodeListener extends AbstractListener {
         if (event instanceof CustomEntityExplodeEvent)
             return;
 
+        if (!Constants.VALID_ENVIRONMENTS.contains(event.getEntity().getWorld().getEnvironment()))
+            return;
+
         handleNewEvent(event.blockList(), () -> new CustomEntityExplodeEvent(
                 event.getEntity(),
                 event.getLocation(),
@@ -55,7 +62,7 @@ public class ExplodeListener extends AbstractListener {
     }
 
     private void handleNewEvent(List<Block> blocks, Supplier<Event> newEventSupplier) {
-        List<Location> referencePoints = blocks.stream()
+        List<ReferencePoint> referencePoints = blocks.stream()
                 .filter(block -> block.getType() == Material.NETHER_PORTAL)
                 .map(block -> plugin.getPortalLogicManager().getReferencePoint(block.getLocation()))
                 .filter(Objects::nonNull)
@@ -73,8 +80,8 @@ public class ExplodeListener extends AbstractListener {
             return;
 
         // remove from the lookup
-        for (Location referencePoint : referencePoints)
-            plugin.getPortalLocationManager().deletePortal(referencePoint);
+        for (ReferencePoint referencePoint : referencePoints)
+            plugin.getPortalLocationManager().deletePortal(referencePoint.getLocation(), referencePoint.isCustom());
     }
 
 }
