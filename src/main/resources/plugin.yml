@@ -6,7 +6,7 @@ authors: [ Deathcofi ]
 description: A PaperMC plugin to allow customizable Nether to Overworld ratio.
 commands:
     nrreload:
-        aliases: [nrrel, nrel, rel, nreload, reload]
+        aliases: [nrrel]
         description: Reload the configuration files (admin command).
         usage: "Usage: /<command>"
         permission: netherratio.nrreload
