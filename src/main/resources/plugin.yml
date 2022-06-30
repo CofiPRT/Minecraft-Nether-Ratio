@@ -1,7 +1,7 @@
 name: NetherRatio
 version: '${version}'
 main: ro.cofi.netherratio.NetherRatio
-api-version: 1.18
+api-version: 1.19
 authors: [ Deathcofi ]
 description: A PaperMC plugin to allow customizable Nether to Overworld ratio.
 commands:

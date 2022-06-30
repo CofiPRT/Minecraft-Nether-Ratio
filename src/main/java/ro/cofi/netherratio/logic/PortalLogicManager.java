@@ -112,8 +112,14 @@ public class PortalLogicManager {
 
             destinationWorld = nether;
 
-            // fixed Y for overworld
-            preferredY = PREFERRED_OVERWORLD_Y;
+            // interpolate overworld height to nether height, not higher than the nether bedrock ceiling
+            preferredY = LocationUtil.mapInterval(
+                    overworld.getMinHeight(),
+                    overworld.getMaxHeight(),
+                    nether.getMinHeight(),
+                    netherBedrockCeiling,
+                    referenceLocation.getY()
+            );
         } else {
             if (isCustom) {
                 maxDistance = plugin.getConfigManager().getMinDistanceBetweenPortalsOverworld();
@@ -126,19 +132,15 @@ public class PortalLogicManager {
 
             destinationWorld = overworld;
 
-            // interpolate overworld height to nether height, not higher than the nether bedrock ceiling
-            preferredY = LocationUtil.mapInterval(
-                    overworld.getMinHeight(),
-                    overworld.getMaxHeight(),
-                    nether.getMinHeight(),
-                    netherBedrockCeiling,
-                    referenceLocation.getY()
-            );
+            // fixed Y for overworld
+            preferredY = PREFERRED_OVERWORLD_Y;
         }
 
         // scale X and Z
         Vector scaledReferencePoint = referenceLocation.toVector().multiply(scaleFactor);
+        scaledReferencePoint.setX(Math.floor(scaledReferencePoint.getX()));
         scaledReferencePoint.setY(preferredY);
+        scaledReferencePoint.setZ(Math.floor(scaledReferencePoint.getZ()));
 
         List<Vector> destinationPortals = plugin.getPortalLocationManager().getPortals(destinationWorld, isCustom);
 
@@ -152,7 +154,7 @@ public class PortalLogicManager {
                         // map around an entry - we want to compare based on distance but return the original object
                         return new AbstractMap.SimpleEntry<>(portalLocation, distance);
                 })
-                .filter(entry -> entry.getValue() < maxDistance)
+                .filter(entry -> entry.getValue() < maxDistance + scaleFactor) // accept small errors (the scale factor)
                 .min(Comparator.comparingDouble(AbstractMap.SimpleEntry::getValue))
                 .map(AbstractMap.SimpleEntry::getKey)
                 .map(vec -> LocationUtil.fromVector(destinationWorld, vec))
@@ -167,10 +169,12 @@ public class PortalLogicManager {
         if (destination == null)
             return;
 
-        // center on the Z and X axis
-        double originalY = destination.getY();
-        destination = destination.toCenterLocation();
-        destination.setY(originalY);
+        // adjust the destination based on the entity's position inside the portal, and its hitbox
+        destination = adjustDestination(entity, referenceLocation, destination);
+
+        // something bad happened, abort
+        if (destination == null)
+            return;
 
         // fire an event and check for cancellation
         Event event = entity instanceof Player ?
@@ -190,22 +194,20 @@ public class PortalLogicManager {
         if (((Cancellable) event).isCancelled())
             return;
 
-        // keep the entity's orientation
-        destination.setYaw(entity.getLocation().getYaw());
-        destination.setPitch(entity.getLocation().getPitch());
-
         entity.teleport(destination);
 
         // non-player entities need a portal cooldown to avoid being in a constant teleportation loop
-        if (entity instanceof Player player)
-            player.playSound(player.getLocation(), Sound.BLOCK_PORTAL_TRAVEL, SoundCategory.AMBIENT, 1, 1);
-        else
+        if (entity instanceof Player player) {
+            player.playSound(player.getLocation(), Sound.BLOCK_PORTAL_TRAVEL, SoundCategory.AMBIENT, 0.25f, 1);
+        } else {
             entity.setPortalCooldown(NON_PLAYER_ENTITY_PORTAL_CD);
+            entity.teleport(destination); // teleport again, for the Spigot API can't teleport precisely between worlds
+        }
     }
 
     /**
      * Attempt to create a portal as close to the destination as possible.
-     * May fail in special cases (e.g.: a player not having perms to build at the destination)./
+     * May fail in special cases (e.g.: a player not having perms to build at the destination).
      */
     private Location createNewPortal(Location desiredDestination, Entity entity, Axis preferredAxis, boolean isCustom) {
         // only players may create portals
@@ -278,6 +280,10 @@ public class PortalLogicManager {
         World originWorld = desiredDestination.getWorld();
         Axis otherAxis = preferredAxis == Axis.X ? Axis.Z : Axis.X;
 
+        // don't generate portals above the nether ceiling
+        double minY = originWorld.getMinHeight() + 1;
+        double maxY = (originWorld == nether ? netherBedrockCeiling : originWorld.getMaxHeight()) - (portalHeight + 1);
+
         // start from the desired destination, and expand the search in a spherical manner
         toCheck.offer(desiredDestination);
 
@@ -295,8 +301,7 @@ public class PortalLogicManager {
                 continue;
 
             // keep within world bounds
-            if (current.getY() < originWorld.getMinHeight() + 1 ||
-                    current.getY() > originWorld.getMaxHeight() - (portalHeight + 1))
+            if (current.getY() < minY || current.getY() > maxY)
                 continue;
 
             // keep within vertical bounds
@@ -438,6 +443,116 @@ public class PortalLogicManager {
             data.add(new PortalBlockData(location, blockData));
 
         return data;
+    }
+
+    /**
+     * The vanilla behavior of the teleportation is to teleport relative to the horizontal position of the entity
+     * in regard to the portal's width. For example, if the entity enters the portal through its leftmost side,
+     * it should be teleported to the leftmost side of the destination portal. If it enters through the very center,
+     * exit through the very center, etc.
+     *
+     * This method ensures that happens. It also handles the case where the axis of the destination portal is different.
+     */
+    private Location adjustDestination(Entity entity, Location initialLocation, Location destination) {
+        Axis initialAxis = ((Orientable) initialLocation.getBlock().getBlockData()).getAxis();
+        Axis destinationAxis = ((Orientable) destination.getBlock().getBlockData()).getAxis();
+
+        Set<Material> innerBlocks = Collections.singleton(Material.NETHER_PORTAL);
+        int maxWidth = plugin.getConfigManager().getPortalSizeWidthMax();
+
+        // find the other wall of the portal - we know for sure the initial location is next to one of the walls
+        ReferencePoint limit = findFrameLimit(
+                initialLocation,
+                VectorAxis.of(initialAxis),
+                innerBlocks,
+                maxWidth
+        );
+
+        // something terribly bad has happened, nobody knows what, stop - shouldn't happen
+        if (limit == null)
+            return null;
+
+        // find where the entity is inside the portal, relative to its width
+        double positionFactor = initialAxis == Axis.X ?
+                LocationUtil.mapInterval(
+                        initialLocation.getX(), limit.getLocation().getX() + 1,
+                        0, 1,
+                        entity.getLocation().getX()
+                ) :
+                LocationUtil.mapInterval(
+                        initialLocation.getZ(), limit.getLocation().getZ() + 1,
+                        0, 1,
+                        entity.getLocation().getZ()
+                );
+
+        // find the other wall of the portal - for the destination
+        ReferencePoint destinationLimit = findFrameLimit(
+                destination,
+                VectorAxis.of(destinationAxis),
+                innerBlocks,
+                maxWidth
+        );
+
+        // how is this even possible
+        if (destinationLimit == null)
+            return null;
+
+        double adjustedCoordinate = destinationAxis == Axis.X ?
+                LocationUtil.mapInterval(
+                        0, 1,
+                        destination.getX(), destinationLimit.getLocation().getX() + 1,
+                        positionFactor
+                ) :
+                LocationUtil.mapInterval(
+                        0, 1,
+                        destination.getZ(), destinationLimit.getLocation().getZ() + 1,
+                        positionFactor
+                );
+
+        Location adjustedLocation = destination.clone();
+
+        // fit the entity's hitbox inside the portal to avoid suffocation
+        if (destinationAxis == Axis.X) {
+            adjustedLocation.setX(adjustedCoordinate);
+            adjustedLocation.add(0, 0, 0.5); // center on Z axis
+
+            double widthOffset = entity.getBoundingBox().getWidthX() / 2;
+
+            // fit hitbox
+            adjustedLocation.setX(Math.max(
+                    adjustedLocation.getX(),
+                    destination.getX() + widthOffset
+            ));
+            adjustedLocation.setX(Math.min(
+                    adjustedLocation.getX(),
+                    destinationLimit.getLocation().getX() + 1 - widthOffset
+            ));
+        } else {
+            adjustedLocation.setZ(adjustedCoordinate);
+            adjustedLocation.add(0.5, 0, 0); // center on X axis
+
+            double widthOffset = entity.getBoundingBox().getWidthZ() / 2;
+
+            // fit hitbox
+            adjustedLocation.setZ(Math.max(
+                    adjustedLocation.getZ(),
+                    destination.getZ() + widthOffset
+            ));
+            adjustedLocation.setZ(Math.min(
+                    adjustedLocation.getZ(),
+                    destinationLimit.getLocation().getZ() + 1 - widthOffset
+            ));
+        }
+
+        // the destination should match the orientation of the entity
+        adjustedLocation.setPitch(entity.getLocation().getPitch());
+        adjustedLocation.setYaw(entity.getLocation().getYaw());
+
+        // if the destination portal has a different axis, rotate 90 degrees
+        if (initialAxis != destinationAxis)
+            adjustedLocation.setYaw(adjustedLocation.getYaw() + 90);
+
+        return adjustedLocation;
     }
 
     /**
