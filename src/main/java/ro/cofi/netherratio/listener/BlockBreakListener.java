@@ -46,7 +46,7 @@ public class BlockBreakListener extends AbstractListener {
         if (block.getType() == Material.NETHER_PORTAL)
             referencePoints.addAll(getFromNetherPortal(block));
         else if (block.getType() == plugin.getConfigManager().getFrameBlock() ||
-                block.getType() == Constants.VANILLA_FRAME_BLOCK)
+                 block.getType() == Constants.VANILLA_FRAME_BLOCK)
             referencePoints.addAll(getFromFrame(block));
 
         // no point in firing any events
@@ -105,7 +105,7 @@ public class BlockBreakListener extends AbstractListener {
         Block targetBlock = origin.clone().add(direction).getBlock();
 
         if (targetBlock.getType() == Material.NETHER_PORTAL &&
-                (axis == null || ((Orientable) targetBlock.getBlockData()).getAxis() == axis))
+            (axis == null || ((Orientable) targetBlock.getBlockData()).getAxis() == axis))
             return targetBlock.getLocation();
 
         return null;
@@ -120,7 +120,7 @@ public class BlockBreakListener extends AbstractListener {
 
         // remove from the lookup
         for (ReferencePoint referencePoint : referencePoints)
-            plugin.getPortalLocationManager().deletePortal(referencePoint.getLocation(), referencePoint.isCustom());
+            plugin.getPortalLocationManager().deletePortal(referencePoint.location(), referencePoint.isCustom());
     }
 
 }

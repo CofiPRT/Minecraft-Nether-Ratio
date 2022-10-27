@@ -36,9 +36,9 @@ public class ExplodeListener extends AbstractListener {
             return;
 
         handleNewEvent(event.blockList(), () -> new CustomBlockExplodeEvent(
-                event.getBlock(),
-                event.blockList(),
-                event.getYield()
+            event.getBlock(),
+            event.blockList(),
+            event.getYield()
         ));
     }
 
@@ -54,19 +54,19 @@ public class ExplodeListener extends AbstractListener {
             return;
 
         handleNewEvent(event.blockList(), () -> new CustomEntityExplodeEvent(
-                event.getEntity(),
-                event.getLocation(),
-                event.blockList(),
-                event.getYield()
+            event.getEntity(),
+            event.getLocation(),
+            event.blockList(),
+            event.getYield()
         ));
     }
 
     private void handleNewEvent(List<Block> blocks, Supplier<Event> newEventSupplier) {
         List<ReferencePoint> referencePoints = blocks.stream()
-                .filter(block -> block.getType() == Material.NETHER_PORTAL)
-                .map(block -> plugin.getPortalLogicManager().getReferencePoint(block.getLocation()))
-                .filter(Objects::nonNull)
-                .toList();
+            .filter(block -> block.getType() == Material.NETHER_PORTAL)
+            .map(block -> plugin.getPortalLogicManager().getReferencePoint(block.getLocation()))
+            .filter(Objects::nonNull)
+            .toList();
 
         // no point in firing any event
         if (referencePoints.isEmpty())
@@ -81,7 +81,7 @@ public class ExplodeListener extends AbstractListener {
 
         // remove from the lookup
         for (ReferencePoint referencePoint : referencePoints)
-            plugin.getPortalLocationManager().deletePortal(referencePoint.getLocation(), referencePoint.isCustom());
+            plugin.getPortalLocationManager().deletePortal(referencePoint.location(), referencePoint.isCustom());
     }
 
 }

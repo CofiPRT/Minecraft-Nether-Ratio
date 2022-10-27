@@ -10,8 +10,9 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 public class CustomPortalCreateEvent extends PortalCreateEvent {
-    public CustomPortalCreateEvent(@NotNull List<BlockState> blocks, @NotNull World world,
-                                   @Nullable Entity entity, @NotNull CreateReason reason) {
+    public CustomPortalCreateEvent(
+        @NotNull List<BlockState> blocks, @NotNull World world, @Nullable Entity entity, @NotNull CreateReason reason
+    ) {
         super(blocks, world, entity, reason);
     }
 }

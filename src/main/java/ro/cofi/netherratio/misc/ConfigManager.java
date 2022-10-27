@@ -33,8 +33,9 @@ public class ConfigManager {
             material = Registry.MATERIAL.get(namespacedKey);
 
         if (material == null) {
-            plugin.getLogger().severe(plugin.prefixMessage("Unknown block id '%s'. Fixing to default frame block '%s'"
-                    .formatted(frameBlock, backup)));
+            plugin.getLogger().severe(plugin.prefixMessage(
+                "Unknown block id '%s'. Fixing to default frame block '%s'".formatted(frameBlock, backup)
+            ));
 
             plugin.getConfig().set("frame_block", backup);
 

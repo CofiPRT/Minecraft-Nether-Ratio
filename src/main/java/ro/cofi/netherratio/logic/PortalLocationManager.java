@@ -14,9 +14,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public class PortalLocationManager {
 
@@ -77,7 +77,8 @@ public class PortalLocationManager {
 
     /**
      * Simple getter that guarantees a non-null result.
-     * @return	The portal data configuration.
+     *
+     * @return The portal data configuration.
      */
     public FileConfiguration getConfig() {
         if (config == null)
@@ -127,9 +128,10 @@ public class PortalLocationManager {
             return Collections.emptyList();
 
         return section.getKeys(false)
-                .stream()
-                .map(this::stringToVec)
-                .collect(Collectors.toList());
+            .stream()
+            .map(this::stringToVec)
+            .filter(Objects::nonNull)
+            .toList();
     }
 
     private String vecToString(Vector vec) {
@@ -138,13 +140,13 @@ public class PortalLocationManager {
 
     private Vector stringToVec(String vec) {
         int[] coords = COORD_SEPARATOR.splitAsStream(vec)
-                .limit(3)
-                .mapToInt(Integer::parseInt)
-                .toArray();
+            .limit(3)
+            .mapToInt(Integer::parseInt)
+            .toArray();
 
         if (coords.length < 3) {
             plugin.getLogger().severe(plugin.prefixMessage(
-                    "Invalid coordinates '" + vec + "' in config file " + FILE_NAME
+                "Invalid coordinates '" + vec + "' in config file " + FILE_NAME
             ));
             return null;
         }
@@ -158,7 +160,7 @@ public class PortalLocationManager {
 
     private String getWorldKey(World world, boolean isCustom) {
         return (isCustom ? CUSTOM_KEY : VANILLA_KEY) + "." +
-                (world.getEnvironment() == World.Environment.NORMAL ? OVERWORLD_KEY : NETHER_KEY);
+               (world.getEnvironment() == World.Environment.NORMAL ? OVERWORLD_KEY : NETHER_KEY);
     }
 
 }

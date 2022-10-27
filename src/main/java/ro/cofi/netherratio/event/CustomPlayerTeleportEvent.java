@@ -11,7 +11,9 @@ public class CustomPlayerTeleportEvent extends PlayerTeleportEvent {
         super(player, from, to);
     }
 
-    public CustomPlayerTeleportEvent(@NotNull Player player, @NotNull Location from, @Nullable Location to, @NotNull TeleportCause cause) {
+    public CustomPlayerTeleportEvent(
+        @NotNull Player player, @NotNull Location from, @Nullable Location to, @NotNull TeleportCause cause
+    ) {
         super(player, from, to, cause);
     }
 }

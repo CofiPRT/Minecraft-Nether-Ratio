@@ -9,7 +9,10 @@ import org.jetbrains.annotations.NotNull;
 import java.util.List;
 
 public class CustomEntityExplodeEvent extends EntityExplodeEvent {
-    public CustomEntityExplodeEvent(@NotNull Entity what, @NotNull Location location, @NotNull List<Block> blocks, float yield) {
+    @SuppressWarnings("squid:S6213") // match parameter name from super class
+    public CustomEntityExplodeEvent(
+        @NotNull Entity what, @NotNull Location location, @NotNull List<Block> blocks, float yield
+    ) {
         super(what, location, blocks, yield);
     }
 }

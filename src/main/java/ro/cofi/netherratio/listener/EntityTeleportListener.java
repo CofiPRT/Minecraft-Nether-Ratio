@@ -63,9 +63,8 @@ public class EntityTeleportListener extends AbstractListener {
         World to = event.getTo().getWorld();
 
         if (Objects.equals(from, to) ||
-                !Constants.VALID_ENVIRONMENTS.contains(from.getEnvironment()) ||
-                !Constants.VALID_ENVIRONMENTS.contains(to.getEnvironment())
-        )
+            !Constants.VALID_ENVIRONMENTS.contains(from.getEnvironment()) ||
+            !Constants.VALID_ENVIRONMENTS.contains(to.getEnvironment()))
             return;
 
         handleEvent(event, event.getEntity());

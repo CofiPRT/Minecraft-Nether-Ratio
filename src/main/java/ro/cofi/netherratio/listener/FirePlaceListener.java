@@ -129,23 +129,24 @@ public class FirePlaceListener extends AbstractListener {
 
         // find vertical limits
         ReferencePoint bottom = plugin.getPortalLogicManager().findFrameLimit(
-                origin, VectorAxis.NY,Constants.REPLACEABLE_BLOCKS, maxHeight
+            origin, VectorAxis.NY, Constants.REPLACEABLE_BLOCKS, maxHeight
         );
         if (bottom == null)
             return null;
 
         ReferencePoint top = plugin.getPortalLogicManager().findFrameLimit(
-                origin, VectorAxis.Y, Constants.REPLACEABLE_BLOCKS, maxHeight
+            origin, VectorAxis.Y, Constants.REPLACEABLE_BLOCKS, maxHeight
         );
         if (top == null)
             return null;
 
         // keep within bounds
-        double height = Math.sqrt(top.getLocation().distanceSquared(bottom.getLocation())) + 1;
+        double height = Math.sqrt(top.location().distanceSquared(bottom.location())) + 1;
         if (height < minHeight || height > maxHeight)
             return null;
 
-        ReferencePoint left = null, right = null; // according to axis
+        ReferencePoint left = null;
+        ReferencePoint right = null; // according to axis
 
         // attempt on X axis, then Z axis
         Axis chosenAxis = null;
@@ -154,13 +155,13 @@ public class FirePlaceListener extends AbstractListener {
             Vector direction = VectorAxis.of(axis);
 
             left = plugin.getPortalLogicManager().findFrameLimit(
-                    origin, direction.clone().multiply(-1), Constants.REPLACEABLE_BLOCKS, maxWidth
+                origin, direction.clone().multiply(-1), Constants.REPLACEABLE_BLOCKS, maxWidth
             );
             if (left == null)
                 continue;
 
             right = plugin.getPortalLogicManager().findFrameLimit(
-                    origin, direction.clone().multiply(1), Constants.REPLACEABLE_BLOCKS, maxWidth
+                origin, direction.clone().multiply(1), Constants.REPLACEABLE_BLOCKS, maxWidth
             );
             if (right == null) {
                 left = null; // reset for future iteration
@@ -168,7 +169,7 @@ public class FirePlaceListener extends AbstractListener {
             }
 
             // keep within bounds
-            double width = left.getLocation().distanceSquared(right.getLocation()) + 1;
+            double width = left.location().distanceSquared(right.location()) + 1;
             if (width >= minWidth && width <= maxWidth) {
                 chosenAxis = axis;
                 break;
@@ -191,8 +192,8 @@ public class FirePlaceListener extends AbstractListener {
         Vector direction = VectorAxis.of(chosenAxis);
 
         Material frameBlock = left.isCustom() ?
-                plugin.getConfigManager().getFrameBlock() :
-                Constants.VANILLA_FRAME_BLOCK;
+                              plugin.getConfigManager().getFrameBlock() :
+                              Constants.VANILLA_FRAME_BLOCK;
 
         // check all frames
         if (!checkFrame(bottomLeft, bottomRight, VectorAxis.NY, frameBlock) ||
@@ -211,10 +212,10 @@ public class FirePlaceListener extends AbstractListener {
      */
     private Location makeCorner(World world, ReferencePoint horizontal, ReferencePoint vertical) {
         return new Location(
-                world,
-                horizontal.getLocation().getBlockX(),
-                vertical.getLocation().getBlockY(),
-                horizontal.getLocation().getBlockZ()
+            world,
+            horizontal.location().getBlockX(),
+            vertical.location().getBlockY(),
+            horizontal.location().getBlockZ()
         );
     }
 
